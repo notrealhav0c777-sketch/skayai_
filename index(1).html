@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SKAY IA</title>
+<style>
+:root{--bg:#0a0a0b;--panel:#121214;--line:#26262a;--gold:#d4af37;--tx:#f2f2f2;--mu:#8a8a90}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.55 system-ui,sans-serif;display:flex;height:100dvh}
+nav{width:210px;border-right:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px;color:var(--gold);font-weight:600;letter-spacing:.2em;margin-bottom:18px}
+.brand svg{width:34px;height:34px}
+nav button{background:none;border:0;color:var(--mu);text-align:left;padding:9px 12px;border-radius:8px;cursor:pointer;font:inherit;white-space:nowrap}
+nav button:hover{color:var(--tx)}nav button.on{color:var(--gold);background:var(--panel)}
+main{flex:1;overflow:auto;padding:28px;min-width:0}
+h1,h2{font-weight:500;margin:0 0 8px}h1{font-size:44px;letter-spacing:.25em;color:var(--gold)}
+.mu{color:var(--mu)}
+.hero{text-align:center;padding:40px 0}.hero svg{width:96px;height:96px;color:var(--gold)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:10px 0}
+.card.sel{border-color:var(--gold)}.card.off{opacity:.45}
+.row{display:flex;gap:8px;align-items:center}
+button,input,select,textarea{font:inherit;color:var(--tx);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+button{cursor:pointer}button:hover{border-color:var(--gold)}
+.gb{background:var(--gold);color:#0a0a0b;border-color:var(--gold);font-weight:600}
+input,textarea{flex:1;min-width:0}textarea{resize:none}
+.chat{height:100%;display:flex;flex-direction:column}
+.bar{display:flex;gap:12px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--line)}.bar b{color:var(--gold)}.bar span{flex:1}
+.msgs{flex:1;overflow:auto;padding:8px 0}
+.m{padding:10px 14px;border-radius:10px;margin:8px 0;white-space:pre-wrap;max-width:85%;overflow-wrap:anywhere}
+.u{background:var(--panel);border:1px solid var(--line);margin-left:auto}
+.a{border-left:2px solid var(--gold)}.s{color:var(--mu);font-size:13px}
+.in{display:flex;gap:8px;padding-top:12px}
+@media(max-width:720px){body{flex-direction:column}nav{width:100%;flex-direction:row;overflow-x:auto;border:0;border-bottom:1px solid var(--line);padding:8px}.brand{display:none}main{padding:16px}h1{font-size:30px}}
+</style></head>
+<body><nav id="nav"></nav><main id="main"></main>
+<script>
+const $=s=>document.querySelector(s);
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}};
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S=load('skay.s',{model:'claude',mode:'default',code:'',voice:false}),chats=load('skay.c',[]),mem=load('skay.m',[]),cur=null,view='home',busy=false;
+const persist=()=>save('skay.c',chats),CMDS={MODOGENTIL:'gentil',RESET:'default',WOLLY:'wolly'};
+const MODELS={claude:['Claude','Anthropic · integração real',1],openai:['ChatGPT','OpenAI · integração real',1],gemini:['Gemini','Google · integração real',1],arena:['Arena AI','Sem API pública confirmada · indisponível',0]};
+const LOGO=`<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="32" cy="7" rx="11" ry="3.5"/><rect x="22" y="15" width="20" height="16" rx="4"/><circle cx="28" cy="23" r="1.8" fill="currentColor"/><circle cx="36" cy="23" r="1.8" fill="currentColor"/><rect x="25" y="34" width="14" height="14" rx="3"/><path d="M25 38C17 34 9 36 5 28c8 0 14 2 20 6"/><path d="M39 38c8-4 16-2 20-10-8 0-14 2-20 6"/><path d="M28 48v9M36 48v9"/></svg>`;
+const NAV={home:'Início',chat:'Chat',models:'Modelos',history:'Histórico',memory:'Memória',auto:'Automações',settings:'Configurações'};
+const chat=()=>chats.find(c=>c.id===cur);
+function ensure(){let c=chat();if(!c){c={id:Date.now().toString(36),title:'Nova conversa',messages:[]};chats.unshift(c);cur=c.id}return c}
+function go(v){view=v;render()}
+function render(){
+ $('#nav').innerHTML=`<div class="brand">${LOGO}<span>SKAY</span></div>`+Object.entries(NAV).map(([k,n])=>`<button class="${k===view?'on':''}" onclick="go('${k}')">${n}</button>`).join('');
+ $('#main').innerHTML=V[view]();
+ const m=$('.msgs');if(m)m.scrollTop=m.scrollHeight;
+}
+const V={
+home:()=>`<div class="hero">${LOGO}<h1>SKAY IA</h1><p class="mu">Respostas diretas. Sem enrolação. Sem invenção.</p><button class="gb" onclick="go('chat')">Iniciar conversa</button></div>
+<div class="grid"><div class="card"><h2>Funciona agora</h2><p class="mu">Chat com Claude, ChatGPT e Gemini · histórico · memória editável · ditado e leitura por voz do navegador.</p></div>
+<div class="card"><h2>Ainda não implementado</h2><p class="mu">Arena AI · controle do PC · agentes · visão · pesquisa em 20+ fontes · automações · programação autônoma.</p></div></div>`,
+chat:()=>{const c=chat();return `<div class="chat"><div class="bar"><b>${MODELS[S.model][0]}</b><span class="mu">${c?esc(c.title):'Nova conversa'}</span><button onclick="cur=null;render()">Nova</button></div>
+<div class="msgs">${c?c.messages.map(m=>`<div class="m ${m.role==='user'?'u':m.role==='system'?'s':'a'}">${esc(m.content)}</div>`).join(''):'<p class="mu">Pergunte algo.</p>'}${busy?'<div class="m s">Processando…</div>':''}</div>
+<div class="in"><button onclick="dictate()">Ditar</button><textarea id="t" rows="1" placeholder="Mensagem" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea><button class="gb" onclick="send()">Enviar</button></div></div>`},
+models:()=>`<h2>Modelos</h2><p class="mu">As chaves ficam no servidor (Vercel), nunca no navegador.</p>`+Object.entries(MODELS).map(([k,[n,d,on]])=>`<div class="card ${k===S.model?'sel':''} ${on?'':'off'}" ${on?`onclick="pick('${k}')" style="cursor:pointer"`:''}><b>${n}</b><div class="mu">${d}</div></div>`).join(''),
+history:()=>`<h2>Histórico</h2><p class="mu">Salvo neste navegador.</p>`+(chats.map((c,i)=>`<div class="card row"><span style="flex:1">${esc(c.title)}</span><button onclick="cur='${c.id}';go('chat')">Abrir</button><button onclick="chats.splice(${i},1);persist();render()">Apagar</button></div>`).join('')||'<p class="mu">Vazio.</p>'),
+memory:()=>`<h2>Memória</h2><p class="mu">Salva neste navegador e enviada como contexto a cada pergunta. Você consulta, edita e apaga.</p><div class="row"><input id="mi" placeholder="Algo para lembrar"><button class="gb" onclick="addMem()">Adicionar</button></div>`+(mem.map((m,i)=>`<div class="card row"><span style="flex:1">${esc(m)}</span><button onclick="editMem(${i})">Editar</button><button onclick="mem.splice(${i},1);save('skay.m',mem);render()">Apagar</button></div>`).join('')||'<p class="mu">Vazia.</p>'),
+auto:()=>`<h2>Automações</h2><div class="card"><b>Não implementado nesta versão.</b><p class="mu">Rotinas, tarefas agendadas e relatórios exigem backend com banco de dados e agendador. Estão na fase 2 do roteiro.</p></div>`,
+settings:()=>`<h2>Configurações</h2><div class="card"><p>Modelo</p><select onchange="pick(this.value)">${Object.entries(MODELS).filter(([,v])=>v[2]).map(([k,v])=>`<option value="${k}" ${k===S.model?'selected':''}>${v[0]}</option>`).join('')}</select></div>
+<div class="card"><label class="row"><input type="checkbox" style="flex:none" ${S.voice?'checked':''} onchange="S.voice=this.checked;save('skay.s',S);speechSynthesis.cancel()"> Ler respostas em voz alta</label></div>
+<div class="card"><p>Código de acesso (se configurado no servidor)</p><input type="password" value="${esc(S.code)}" onchange="S.code=this.value;save('skay.s',S)"></div>
+<div class="card"><button onclick="if(confirm('Apagar tudo?')){localStorage.clear();location.reload()}">Apagar todos os dados locais</button></div>`};
+function pick(k){S.model=k;save('skay.s',S);render()}
+function addMem(){const v=$('#mi').value.trim();if(v){mem.push(v);save('skay.m',mem);render()}}
+function editMem(i){const v=prompt('Editar memória',mem[i]);if(v!==null&&v.trim()){mem[i]=v.trim();save('skay.m',mem);render()}}
+function speak(t){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';speechSynthesis.speak(u)}
+function dictate(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return alert('Seu navegador não suporta ditado.');const r=new R();r.lang='pt-BR';r.onresult=e=>{$('#t').value+=e.results[0][0].transcript};r.start()}
+async function send(){
+ const t=$('#t'),text=t.value.trim();if(!text||busy)return;t.value='';speechSynthesis.cancel();
+ const c=ensure();
+ if(CMDS[text]){S.mode=CMDS[text];save('skay.s',S);c.messages.push({role:'system',content:'Configuração aplicada.'});persist();return render()}
+ if(c.title==='Nova conversa')c.title=text.slice(0,40);
+ c.messages.push({role:'user',content:text});busy=true;render();
+ try{
+  const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json','x-access-code':S.code},body:JSON.stringify({model:S.model,mode:S.mode,memory:mem,messages:c.messages.filter(m=>m.role!=='system').map(({role,content})=>({role,content}))})});
+  const d=await r.json();if(!r.ok)throw new Error(d.error||r.status);
+  c.messages.push({role:'assistant',content:d.text});if(S.voice)speak(d.text);
+ }catch(e){c.messages.push({role:'system',content:'Erro: '+e.message})}
+ busy=false;persist();render();
+}
+render();
+</script></body></html>
